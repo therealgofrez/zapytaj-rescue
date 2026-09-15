@@ -23,12 +23,12 @@ if [ ! -f ".env" ]; then
     echo ""
 fi
 
-if [ ! -d "venv" ]; then
+if [ ! -d ".venv" ]; then
     echo "[INFO] Tworzenie środowiska wirtualnego Python (venv)..."
-    python3 -m venv venv
+    python3 -m venv .venv
 fi
 
-source venv/bin/activate
+source .venv/bin/activate
 
 echo "[1/2] Instalacja/aktualizacja bibliotek..."
 pip install -q -r requirements.txt
