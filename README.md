@@ -165,6 +165,8 @@ Twój worker od razu pojawi się na żywo w panelu koordynatora:
 <p align="right">(<a href="#readme-top">do góry</a>)</p>
 
 ---
+### Krok 4: Optymalizacja
+1 worker działa średnio 0.5 req/s, można postawić dwa bez problemu (polecam przez tmux) z ratelimitami, wtedy osiągniesz 1 req/s, do kolejnych potrzeba już połączeń LTE/VPN/VPS
 
 <!-- COORDINATOR SETUP -->
 ## 🖥️ Jak postawić własnego Koordynatora
