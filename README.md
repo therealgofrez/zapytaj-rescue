@@ -67,7 +67,7 @@ Serwis **Zapytaj.onet.pl** (dawniej *Zapytaj.com.pl*, działający od 2006 roku)
 - **21 września 2026 r.** – przejście w tryb *read-only* (blokada zadawania i odpowiadania na pytania).
 - **30 września 2026 r.** – całkowite wyłączenie serwerów i **trwałe usunięcie wszystkich danych**.
 
-W bazie serwisu znajduje się ponad **33 400 000 pytań**, setki milionów odpowiedzi oraz unikalny zapis kultury polskiego internetu z ostatnich 18 lat.
+W bazie serwisu znajduje się ponad **33 400 000 pytań**, setki milionów odpowiedzi i wiele kont użytkowników.
 
 ### Dlaczego ten projekt jest krytyczny?
 Oficjalny bot ArchiveTeam (*ArchiveBot*, zadanie `673i9jafj0idyemybm1p7up5h`) działa jako pojedynczy proces. W ciągu pierwszych 10 dni od ogłoszenia zamknięcia pobrał zaledwie **~306 000 pytań** (mniej niż **1%** całości), marnując czas na badanie zewnętrznych linków. W tym tempie ArchiveTeam zabezpieczyłby zaledwie ułamek procenta serwisu.

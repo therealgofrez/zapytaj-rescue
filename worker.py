@@ -2,6 +2,7 @@ import time
 import os
 import requests
 import asyncio
+import threading
 from typing import Optional
 from config import settings
 from dedup import ArchiveBotSync
@@ -95,30 +96,46 @@ def run_worker(
             stats = asyncio.run(crawler.crawl_range(start_id, end_id))
 
             warc_path, rec_count, warc_bytes = warc_mgr.close()
-            checksum = calculate_sha256(warc_path) if os.path.exists(warc_path) else ""
             warc_filename = os.path.basename(warc_path)
             mb_size = round(warc_bytes / (1024 * 1024), 2)
             print(f"[Worker] Zamknięto plik WARC: {warc_filename} ({mb_size} MB, {rec_count} rekordów).")
 
+            # Utrzymujemy heartbeat w osobnym wątku podczas hashowania i wysyłania do Internet Archive,
+            # aby koordynator nie zrestartował dzierżawy przy wolnym uploadzie (>30 min).
+            stop_upload_heartbeat = threading.Event()
+
+            def _upload_heartbeat_loop():
+                while not stop_upload_heartbeat.wait(timeout=settings.HEARTBEAT_INTERVAL):
+                    send_heartbeat()
+
+            hb_thread = threading.Thread(target=_upload_heartbeat_loop, daemon=True)
+            hb_thread.start()
+
             upload_ok = True
-            if auto_upload:
-                if settings.IA_ACCESS_KEY and settings.IA_SECRET_KEY:
-                    print(f"[Worker] Wysyłanie paczki #{chunk_id} na konto Internet Archive...")
-                    up_res = upload_to_internet_archive(
-                        warc_path,
-                        volunteer=volunteer_name,
-                        chunk_id=chunk_id,
-                        access_key=settings.IA_ACCESS_KEY,
-                        secret_key=settings.IA_SECRET_KEY,
-                        delete_after_upload=True
-                    )
-                    if not up_res.get("success"):
-                        upload_ok = False
-                        print(f"[Worker] BŁĄD UPLOADU DO IA: {up_res.get('error')}")
-                        print(f"[Worker] Plik {warc_filename} zachowano w ./warcs/. Paczka #{chunk_id} NIE zostanie oznaczona jako ukończona.")
-                else:
-                    print(f"[OSTRZEŻENIE] Brak kluczy IA_ACCESS_KEY / IA_SECRET_KEY w .env.")
-                    print(f"[OSTRZEŻENIE] Plik {warc_filename} został zachowany lokalnie w ./warcs/.")
+            checksum = ""
+            try:
+                checksum = calculate_sha256(warc_path) if os.path.exists(warc_path) else ""
+                if auto_upload:
+                    if settings.IA_ACCESS_KEY and settings.IA_SECRET_KEY:
+                        print(f"[Worker] Wysyłanie paczki #{chunk_id} na konto Internet Archive (heartbeat aktywny)...")
+                        up_res = upload_to_internet_archive(
+                            warc_path,
+                            volunteer=volunteer_name,
+                            chunk_id=chunk_id,
+                            access_key=settings.IA_ACCESS_KEY,
+                            secret_key=settings.IA_SECRET_KEY,
+                            delete_after_upload=True
+                        )
+                        if not up_res.get("success"):
+                            upload_ok = False
+                            print(f"[Worker] BŁĄD UPLOADU DO IA: {up_res.get('error')}")
+                            print(f"[Worker] Plik {warc_filename} zachowano w ./warcs/. Paczka #{chunk_id} NIE zostanie oznaczona jako ukończona.")
+                    else:
+                        print(f"[OSTRZEŻENIE] Brak kluczy IA_ACCESS_KEY / IA_SECRET_KEY w .env.")
+                        print(f"[OSTRZEŻENIE] Plik {warc_filename} został zachowany lokalnie w ./warcs/.")
+            finally:
+                stop_upload_heartbeat.set()
+                hb_thread.join(timeout=1.0)
 
             if upload_ok:
                 try:

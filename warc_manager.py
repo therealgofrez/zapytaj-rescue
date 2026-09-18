@@ -51,7 +51,21 @@ class WarcManager:
             if not self.writer:
                 self._start_new_warc()
 
-            header_tuples = [(k, v) for k, v in headers.items() if not k.lower().startswith(":")]
+            header_tuples = []
+            has_content_length = False
+            for k, v in headers.items():
+                kl = k.lower()
+                if kl.startswith(":") or kl in ("content-encoding", "transfer-encoding", "connection", "keep-alive"):
+                    continue
+                if kl == "content-length":
+                    header_tuples.append((k, str(len(body))))
+                    has_content_length = True
+                else:
+                    header_tuples.append((k, v))
+
+            if not has_content_length:
+                header_tuples.append(("Content-Length", str(len(body))))
+
             http_headers = StatusAndHeaders(f"{status_code} {reason}", header_tuples, protocol="HTTP/1.1")
             payload = io.BytesIO(body)
             

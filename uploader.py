@@ -1,4 +1,4 @@
-﻿import os
+import os
 import time
 import hashlib
 from typing import Optional, Dict, Any
@@ -60,6 +60,7 @@ def upload_to_internet_archive(
             metadata=metadata,
             access_key=acc_key,
             secret_key=sec_key,
+            verbose=True,
             verify=True,
             checksum=True,
             delete=delete_after_upload,

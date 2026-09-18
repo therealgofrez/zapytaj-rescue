@@ -141,9 +141,10 @@ class CoordinatorDB:
                     items_404 = ?,
                     warc_filename = ?,
                     warc_size = ?,
-                    checksum = ?
-                WHERE chunk_id = ? AND claimed_by = ?
-            """, (now, items_saved, items_404, warc_filename, warc_size, checksum, chunk_id, volunteer))
+                    checksum = ?,
+                    claimed_by = ?
+                WHERE chunk_id = ? AND (claimed_by = ? OR status != 'DONE')
+            """, (now, items_saved, items_404, warc_filename, warc_size, checksum, volunteer, chunk_id, volunteer))
             conn.commit()
             return cursor.rowcount > 0
 
