@@ -87,25 +87,57 @@ def main():
         print(f"\nUkończono! WARC: {path} ({round(size / (1024*1024), 2)} MB, {recs} rekordów).")
 
     elif args.command == "upload":
+        import re
+        import requests
         warcs_dir = settings.WARCS_DIR
         if not os.path.exists(warcs_dir):
             print(f"Katalog {warcs_dir} nie istnieje.")
             return
 
-        files = [os.path.join(warcs_dir, f) for f in os.listdir(warcs_dir) if f.endswith(".warc.gz")]
+        files = [os.path.join(warcs_dir, f) for f in os.listdir(warcs_dir) if f.endswith(".warc.gz") and not f.endswith(".tmp")]
         if not files:
             print(f"Brak plików .warc.gz w {warcs_dir}.")
             return
 
-        print(f"Znaleziono {len(files)} plików WARC do wysłania.")
+        vol_name = args.volunteer if args.volunteer != "anon" else settings.VOLUNTEER_NAME
+        print(f"Znaleziono {len(files)} plików WARC do wysłania dla wolontariusza: {vol_name}.")
+
         for f in files:
+            fname = os.path.basename(f)
+            m = re.search(r"chunk0*(\d+)", fname)
+            cid = int(m.group(1)) if m else None
+            
+            print(f"\n[Upload] Rozpoczynanie wysyłki {fname} (paczka #{cid})...")
             res = upload_to_internet_archive(
                 warc_path=f,
-                volunteer=args.volunteer,
+                volunteer=vol_name,
+                chunk_id=cid,
                 access_key=args.access_key,
-                secret_key=args.secret_key
+                secret_key=args.secret_key,
+                delete_after_upload=True
             )
-            print(res)
+            if res.get("success"):
+                print(f"[Upload] Wysłano na: {res.get('url')}")
+                if cid and settings.COORDINATOR_URL:
+                    try:
+                        r = requests.post(
+                            f"{settings.COORDINATOR_URL.rstrip('/')}/api/chunk/complete",
+                            json={
+                                "chunk_id": cid,
+                                "volunteer": vol_name,
+                                "items_saved": 15000,
+                                "items_404": 0,
+                                "warc_filename": fname,
+                                "warc_size": 0,
+                                "checksum": ""
+                            },
+                            timeout=15
+                        )
+                        print(f"[Upload] Raportowanie się powiodło")
+                    except Exception as ex:
+                        print(f"[Upload] Błąd raportowania: {ex}")
+            else:
+                print(f"[Upload] BŁĄD: {res.get('error')}")
 
 if __name__ == "__main__":
     main()

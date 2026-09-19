@@ -1,8 +1,15 @@
 import os
 import time
 import hashlib
+import re
 from typing import Optional, Dict, Any
 from config import settings
+
+try:
+    from filelock import FileLock
+    HAS_FILELOCK = True
+except ImportError:
+    HAS_FILELOCK = False
 
 def calculate_sha256(filepath: str) -> str:
     sha = hashlib.sha256()
@@ -19,20 +26,17 @@ def upload_to_internet_archive(
     secret_key: Optional[str] = None,
     delete_after_upload: bool = True
 ) -> Dict[str, Any]:
-    """
-    Wysyła plik WARC do Internet Archive z wymaganymi metadanymi (mediatype:web)
-    i opcjonalnie usuwa lokalną kopię po weryfikacji sumy kontrolnej.
-    """
+    
     if not os.path.exists(warc_path):
         return {"success": False, "error": f"Plik {warc_path} nie istnieje."}
 
-    acc_key = access_key or settings.IA_ACCESS_KEY
-    sec_key = secret_key or settings.IA_SECRET_KEY
+    acc_key = (access_key or settings.IA_ACCESS_KEY or "").strip()
+    sec_key = (secret_key or settings.IA_SECRET_KEY or "").strip()
 
     if not acc_key or not sec_key:
         return {
             "success": False,
-            "error": "Brak kluczy IA_ACCESS_KEY / IA_SECRET_KEY. Zapisano lokalnie w ./warcs/"
+            "error": "Brak kluczy IA_ACCESS_KEY / IA_SECRET_KEY w .env. Zapisano plik lokalnie w ./warcs/"
         }
 
     import internetarchive as ia
@@ -52,8 +56,10 @@ def upload_to_internet_archive(
         "date": time.strftime("%Y-%m-%d")
     }
 
-    print(f"[IA Uploader] Wysyłanie {os.path.basename(warc_path)} do Internet Archive (ID: {identifier})...")
-    try:
+    lock_path = os.path.join(os.path.dirname(os.path.abspath(warc_path)), ".upload.lock")
+
+    def _do_upload():
+        print(f"[IA Uploader] Wysyłanie {os.path.basename(warc_path)} do Internet Archive (ID: {identifier})...")
         res = ia.upload(
             identifier=identifier,
             files=[warc_path],
@@ -64,7 +70,8 @@ def upload_to_internet_archive(
             verify=True,
             checksum=True,
             delete=delete_after_upload,
-            retries=5
+            retries=5,
+            request_kwargs={"timeout": (30, 300)}
         )
         print(f"[IA Uploader] Sukces! https://archive.org/details/{identifier}")
         return {
@@ -72,9 +79,26 @@ def upload_to_internet_archive(
             "identifier": identifier,
             "url": f"https://archive.org/details/{identifier}"
         }
+
+    try:
+        if HAS_FILELOCK:
+            lock = FileLock(lock_path, timeout=7200)
+            with lock:
+                return _do_upload()
+        else:
+            return _do_upload()
     except Exception as e:
-        print(f"[IA Uploader] Błąd wysyłania do Internet Archive: {e}")
+        err_msg = str(e)
+        if "appears to be spam" in err_msg or "reduce your request rate" in err_msg:
+            print("\n" + "!" * 65)
+            print("[IA Uploader] BŁĄD FILTRA SPAMU INTERNET ARCHIVE")
+            print("Serwery Internet Archive tymczasowo ograniczyły upload z Twojego konta.")
+            print("Zbyt wiele nowych pakietów wysyłanych w krótkim czasie.")
+            print("Odczekaj chwilę lub załóż drugie konto IA.")
+            print("!" * 65 + "\n")
+        else:
+            print(f"[IA Uploader] Błąd wysyłania do Internet Archive: {e}")
         return {
             "success": False,
-            "error": str(e)
+            "error": err_msg
         }

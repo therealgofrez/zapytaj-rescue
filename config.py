@@ -22,7 +22,7 @@ class Settings:
     COORDINATOR_URL: str = os.getenv("COORDINATOR_URL", "http://norbert232.mikrus.xyz:20232")
     VOLUNTEER_NAME: str = os.getenv("VOLUNTEER_NAME", "anonymous_volunteer")
     HEARTBEAT_INTERVAL: int = int(os.getenv("HEARTBEAT_INTERVAL", "60"))
-    LEASE_TIMEOUT_MINUTES: int = int(os.getenv("LEASE_TIMEOUT_MINUTES", "60"))
+    LEASE_TIMEOUT_MINUTES: int = int(os.getenv("LEASE_TIMEOUT_MINUTES", "120"))
     
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./data/coordinator.db")
     
