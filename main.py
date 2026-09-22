@@ -1,6 +1,5 @@
 import sys
 import argparse
-import uvicorn
 import os
 from config import settings
 from dedup import ArchiveBotSync
@@ -61,6 +60,11 @@ def main():
         )
 
     elif args.command in ("server", "coordinator"):
+        try:
+            import uvicorn
+        except ImportError:
+            print("Błąd: Pakiet 'uvicorn' nie jest zainstalowany. Zainstaluj go komendą: pip install uvicorn")
+            sys.exit(1)
         print(f"Uruchamianie serwera koordynatora na http://{args.host}:{args.port}...")
         uvicorn.run("coordinator:app", host=args.host, port=args.port, reload=False)
 
