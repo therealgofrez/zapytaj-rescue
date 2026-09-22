@@ -78,7 +78,7 @@ class ZapytajCrawler:
                 if qid in self.known_archivebot_ids:
                     self.skipped_archivebot_count += 1
                 else:
-                    probe_url = f"https://zapytaj.onet.pl/Category/000,000/2,{qid},zapytaj.html"
+                    probe_url = f"https://zapytaj.onet.pl/Category/000,000/2,{qid},q.html"
                     resp = await self._safe_fetch(session, probe_url, allow_redirects=False)
                     await asyncio.sleep(self.delay_per_worker)
 
@@ -109,6 +109,10 @@ class ZapytajCrawler:
                         self.saved_count += 1
                         if self.follow_pagination or self.download_images:
                             await self._fetch_subresources(session, resp.text)
+                    elif resp.status_code == 403:
+                        if self.error_count % 500 == 0:
+                            print(f"[OSTRZEŻENIE] Kod 403 Forbidden od serwera na {probe_url}!")
+                        self.error_count += 1
                     else:
                         self.error_count += 1
 
