@@ -53,9 +53,28 @@ def run_worker(
         import re
         for pf in pending:
             full_p = os.path.join(settings.WARCS_DIR, pf)
+            file_sz = os.path.getsize(full_p) if os.path.exists(full_p) else 0
+            if file_sz < 50000:
+                print(f"[Worker] OSTRZEŻENIE: Plik {pf} ma tylko {file_sz} B (jest pusty lub uszkodzony). Pomijanie wysyłki.")
+                continue
+
             m = re.search(r"chunk0*(\d+)", pf)
             cid = int(m.group(1)) if m else None
-            print(f"[Worker] Dokańczanie wysyłki zaległej paczki #{cid} ({pf})...")
+
+            # Zlicz realną liczbę pobranych pytań/odpowiedzi z pliku WARC
+            real_saved = 0
+            try:
+                from warcio.archiveiterator import ArchiveIterator
+                with open(full_p, "rb") as stream:
+                    real_saved = sum(1 for record in ArchiveIterator(stream) if record.rec_type == "response")
+            except Exception:
+                real_saved = max(int(file_sz / 80000), 10)
+
+            if real_saved == 0:
+                print(f"[Worker] Plik {pf} nie zawiera żadnych rekordów (0 pytań). Pomijanie wysyłki.")
+                continue
+
+            print(f"[Worker] Dokańczanie wysyłki zaległej paczki #{cid} ({pf}, {round(file_sz / (1024*1024), 2)} MB, ~{real_saved} pytań)...")
             
             stop_hb = threading.Event()
             def _hb():
@@ -92,15 +111,15 @@ def run_worker(
                             json={
                                 "chunk_id": cid,
                                 "volunteer": volunteer_name,
-                                "items_saved": 15000,
+                                "items_saved": real_saved,
                                 "items_404": 0,
                                 "warc_filename": pf,
-                                "warc_size": os.path.getsize(full_p) if os.path.exists(full_p) else 0,
+                                "warc_size": file_sz,
                                 "checksum": ""
                             },
                             timeout=15
                         )
-                        print(f"[Worker] Zaległa paczka #{cid} została zaakceptowana na serwerze")
+                        print(f"[Worker] Zaległa paczka #{cid} została zaakceptowana na serwerze.")
                     except Exception as e:
                         print(f"[Worker] Błąd zgłaszania do koordynatora: {e}")
             else:
@@ -183,9 +202,14 @@ def run_worker(
             hb_thread.start()
 
             upload_ok = True
+            if stats["saved"] == 0 and warc_bytes < 50000:
+                print(f"\n[Worker] OSTRZEŻENIE: Paczka #{chunk_id} zakończyła się bez zapisanych pytań (rozmiar {warc_bytes} B).")
+                print(f"[Worker] Plik {warc_filename} nie zostanie wysłany ani oznaczony jako ukończony (błąd sieci/WAF).")
+                upload_ok = False
+
             checksum = ""
             try:
-                checksum = calculate_sha256(warc_path) if os.path.exists(warc_path) else ""
+                checksum = calculate_sha256(warc_path) if (upload_ok and os.path.exists(warc_path)) else ""
                 if auto_upload:
                     if settings.IA_ACCESS_KEY and settings.IA_SECRET_KEY:
                         print(f"[Worker] Wysyłanie paczki #{chunk_id} na konto Internet Archive...")

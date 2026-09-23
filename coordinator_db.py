@@ -130,6 +130,28 @@ class CoordinatorDB:
     def complete_chunk(self, chunk_id: int, volunteer: str, items_saved: int, items_404: int,
                        warc_filename: str = "", warc_size: int = 0, checksum: str = "") -> bool:
         """Oznacza chunk jako ukończony i zapisuje statystyki."""
+        # Walidacja integralności: odrzucamy puste lub uszkodzone paczki
+        if items_saved <= 0 and warc_size < 50000:
+            print(f"[Koordynator] ODRZUCONO paczkę #{chunk_id} od '{volunteer}': 0 zapisanych pytań i rozmiar {warc_size} B. Resetowanie do PENDING.")
+            with self._get_conn() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE chunks
+                    SET status = 'PENDING',
+                        claimed_by = NULL,
+                        claimed_at = NULL,
+                        last_heartbeat = NULL,
+                        completed_at = NULL,
+                        warc_filename = NULL,
+                        warc_size = 0,
+                        items_saved = 0,
+                        items_404 = 0,
+                        checksum = NULL
+                    WHERE chunk_id = ?
+                """, (chunk_id,))
+                conn.commit()
+            return False
+
         now = time.time()
         with self._get_conn() as conn:
             cursor = conn.cursor()

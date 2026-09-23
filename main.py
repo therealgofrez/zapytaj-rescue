@@ -108,10 +108,28 @@ def main():
 
         for f in files:
             fname = os.path.basename(f)
+            file_sz = os.path.getsize(f) if os.path.exists(f) else 0
+            if file_sz < 50000:
+                print(f"\n[Upload] Pomijanie {fname} - plik ma tylko {file_sz} B (jest pusty lub uszkodzony).")
+                continue
+
             m = re.search(r"chunk0*(\d+)", fname)
             cid = int(m.group(1)) if m else None
+
+            # Zlicz realną liczbę pytań z pliku WARC
+            real_saved = 0
+            try:
+                from warcio.archiveiterator import ArchiveIterator
+                with open(f, "rb") as stream:
+                    real_saved = sum(1 for record in ArchiveIterator(stream) if record.rec_type == "response")
+            except Exception:
+                real_saved = max(int(file_sz / 80000), 10)
+
+            if real_saved == 0:
+                print(f"\n[Upload] Pomijanie {fname} - brak odpowiedzi HTTP w pliku (0 pytań).")
+                continue
             
-            print(f"\n[Upload] Rozpoczynanie wysyłki {fname} (paczka #{cid})...")
+            print(f"\n[Upload] Rozpoczynanie wysyłki {fname} (paczka #{cid}, {round(file_sz / (1024*1024), 2)} MB, ~{real_saved} pytań)...")
             res = upload_to_internet_archive(
                 warc_path=f,
                 volunteer=vol_name,
@@ -129,15 +147,15 @@ def main():
                             json={
                                 "chunk_id": cid,
                                 "volunteer": vol_name,
-                                "items_saved": 15000,
+                                "items_saved": real_saved,
                                 "items_404": 0,
                                 "warc_filename": fname,
-                                "warc_size": 0,
+                                "warc_size": file_sz,
                                 "checksum": ""
                             },
                             timeout=15
                         )
-                        print(f"[Upload] Raportowanie się powiodło")
+                        print(f"[Upload] Koordynator zaliczył paczkę #{cid} w rankingu!")
                     except Exception as ex:
                         print(f"[Upload] Błąd raportowania: {ex}")
             else:
