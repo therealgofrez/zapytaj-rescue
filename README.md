@@ -1,4 +1,4 @@
-﻿<!-- Improved compatibility of back to top link: See: https://github.com/othneildrew/Best-README-Template/pull/73 -->
+<!-- Improved compatibility of back to top link: See: https://github.com/othneildrew/Best-README-Template/pull/73 -->
 <a id="readme-top"></a>
 
 <!-- PROJECT SHIELDS -->
@@ -31,6 +31,30 @@
     <a href="http://norbert232.mikrus.xyz:20232/">Status projektu</a>
   </p>
 </div>
+
+---
+
+> [!IMPORTANT]
+> **30 września 2026 roku serwis Zapytaj.onet.pl został definitywnie wyłączony** (wszystkie podstrony pytań zwracają kod `410 Gone`), w związku z czym nasza akcja dobiegła końca.
+>
+> **Repozytorium zostaje zachowane i zarchiwizowane w formie Open Source** - architektura koordynatora, asynchronicznego workera oraz automatycznego eksportera WARC do Internet Archive może w przyszłości posłużyć jako gotowy fundament do kolejnych społecznościowych akcji.
+
+### Podziękowania
+Z całego serca dziękuję wszystkim osobom, które poświęciły swój czas, sprzęt, łącze i serwery, aby uratować kawał historii polskiego internetu:
+- Całej społeczności Discorda **Polskie Lost Media** za błyskawiczną mobilizację, testy, zgłaszanie błędów i masowe wsparcie archiwizacji.
+- Społeczności **Generatora Frajdy** za ogromną pomoc, zaangażowanie i nagłośnienie akcji,
+- **Specjalne podziękowania** dla:
+  - **@jajo**
+  - **@kompostowiec2**
+  - **@rybalan**
+  - **@dropboxkenshiro**
+  - **@nomad_5244**
+  - **@myoongitis**
+  - **@payderikgoner**
+  
+  za wielki wkład w rozwój projektu, pomoc techniczną i organizacyjną oraz ogromny ogólny wkład w archiwizację serwisu Zapytaj.onet.pl
+
+---
 
 <!-- TABLE OF CONTENTS -->
 <details open>
